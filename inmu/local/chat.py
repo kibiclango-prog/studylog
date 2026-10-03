@@ -57,7 +57,7 @@ def chat(host, model, messages):
         "format": SCHEMA,
         "stream": False,
         "think": False,  # Qwen3 などの思考モードを切る（速くなる）
-        "options": {"temperature": 0.7},
+        "options": {"temperature": 0.7, "num_ctx": 8192},  # 語録リスト＋履歴が収まる長さ
     }
     req = urllib.request.Request(
         f"{host}/api/chat",
