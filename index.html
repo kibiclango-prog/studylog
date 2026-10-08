@@ -263,6 +263,49 @@ align-items: center;
 @keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-4px); } }
 .no-data-msg { font-size: 13px; color: var(--text3); text-align: center; padding: 24px 0; }
+
+/* ════ ④ CIRCLE MAP ════ */
+#tab-map { flex-direction: row; }
+.map-left { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); min-width: 0; }
+.map-right { flex: 0 0 300px; display: flex; flex-direction: column; overflow: hidden; }
+.map-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+.map-crumbs { display: flex; align-items: center; gap: 4px; padding: 10px 20px 0; font-size: 12px; color: var(--text3); flex-wrap: wrap; flex-shrink: 0; }
+.map-crumb { border: none; background: none; font-family: var(--sans); font-size: 12px; color: var(--text2); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.map-crumb:hover { background: var(--bg3); }
+.map-crumb.current { color: var(--green); font-weight: 700; cursor: default; background: none; }
+.map-stage { flex: 1; position: relative; min-height: 0; }
+.map-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.map-stage circle { cursor: pointer; transition: stroke-width 0.12s; }
+.map-stage circle:hover { stroke-width: 2.5; }
+.map-label { pointer-events: none; text-anchor: middle; font-family: var(--sans); fill: var(--text); paint-order: stroke; stroke: rgba(255,255,255,0.8); stroke-width: 3px; stroke-linejoin: round; }
+.map-label .map-label-time { font-family: var(--mono); fill: var(--text2); }
+.map-label.on-dark { fill: white; stroke: none; }
+.map-label.on-dark .map-label-time { fill: rgba(255,255,255,0.8); }
+.map-hint { position: absolute; left: 16px; bottom: 12px; font-size: 11px; color: var(--text3); pointer-events: none; }
+.map-tip { position: absolute; pointer-events: none; background: var(--navy); color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.1s; white-space: nowrap; z-index: 5; }
+.map-tip.show { opacity: 1; }
+.map-tip b { font-family: var(--mono); font-weight: 500; }
+.map-detail { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+.map-detail-kind { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.08em; }
+.map-detail-name { font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; word-break: break-all; }
+.map-detail-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.map-detail-total { font-family: var(--mono); font-size: 26px; font-weight: 500; color: var(--green); line-height: 1; }
+.map-detail-sub { font-size: 11px; color: var(--text3); }
+.map-child { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color 0.14s; }
+.map-child:hover { border-color: var(--green3); }
+.map-child.leaf { cursor: default; }
+.map-child.leaf:hover { border-color: var(--border); }
+.map-child-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.map-child-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-child-time { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.map-child-bar-wrap { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.map-child-bar { height: 100%; border-radius: 2px; }
+@media (max-width: 760px) {
+  #tab-map { flex-direction: column; }
+  .map-left { border-right: none; border-bottom: 1px solid var(--border); flex: 0 0 62%; }
+  .map-right { flex: 1; }
+  .map-toolbar, .map-crumbs { padding-left: 16px; padding-right: 16px; }
+}
 </style>
 
 </head>
@@ -275,6 +318,7 @@ align-items: center;
       <button class="tab-btn active" data-tab="timer">タイマー</button>
       <button class="tab-btn" data-tab="today">今日の成果</button>
       <button class="tab-btn" data-tab="stats">統計</button>
+      <button class="tab-btn" data-tab="map">作業マップ</button>
     </div>
     <div class="header-date" id="header-date"></div>
   </header>
@@ -398,6 +442,34 @@ align-items: center;
     </div>
   </div>
 
+  <!-- ④ CIRCLE MAP -->
+
+  <div class="tab-panel" id="tab-map">
+    <div class="map-left">
+      <div class="map-toolbar">
+        <div class="toggle-group" id="map-period-toggle">
+          <button class="toggle-btn" data-val="today">今日</button>
+          <button class="toggle-btn" data-val="week">今週</button>
+          <button class="toggle-btn" data-val="month">今月</button>
+          <button class="toggle-btn active" data-val="all">全期間</button>
+        </div>
+        <div class="toggle-group" id="map-class-toggle">
+          <button class="toggle-btn active" data-val="all">授業込み</button>
+          <button class="toggle-btn" data-val="noclass">授業除く</button>
+        </div>
+      </div>
+      <div class="map-crumbs" id="map-crumbs"></div>
+      <div class="map-stage" id="map-stage">
+        <svg id="map-svg"></svg>
+        <div class="map-tip" id="map-tip"></div>
+        <div class="map-hint">円をクリックで中へ ／ 外側クリックで戻る</div>
+      </div>
+    </div>
+    <div class="map-right">
+      <div class="map-detail" id="map-detail"></div>
+    </div>
+  </div>
+
 </div>
 <div class="toast-container" id="toast-container"></div>
 
@@ -463,6 +535,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab==='today') renderTodayTab();
     if (btn.dataset.tab==='stats') renderStatsTab();
+    if (btn.dataset.tab==='map') renderMapTab();
   });
 });
 
@@ -997,6 +1070,301 @@ document.querySelectorAll('#stats-class-toggle .toggle-btn').forEach(btn=>{
 });
 document.getElementById('stats-sort').addEventListener('change',e=>{ statsSort=e.target.value; renderWeekCards(); });
 document.getElementById('stats-year').addEventListener('change',()=>renderWeekCards());
+
+// ══════════════════════════════════════════
+// CIRCLE MAP
+// ══════════════════════════════════════════
+// 科目 → 教科書/授業 → セッション を入れ子の円で表示。円の面積は勉強時間に比例。
+let mapPeriod = 'all', mapClassFilter = 'all', mapRoot = null, mapFocus = null, mapView = null, mapAnim = null;
+const mapSvg = document.getElementById('map-svg'), mapStage = document.getElementById('map-stage'),
+      mapTip = document.getElementById('map-tip');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MAP_KIND = ['全体','科目','教科書 / 授業','セッション'];
+
+function mapSessions() {
+  const today = todayStr();
+  return state.sessions.filter(s => {
+    if (mapClassFilter==='noclass' && s.isClass) return false;
+    if (mapPeriod==='today') return s.date===today;
+    if (mapPeriod==='week') return getWeekKey(s.date)===getWeekKey(today);
+    if (mapPeriod==='month') return s.date.slice(0,7)===today.slice(0,7);
+    return true;
+  });
+}
+
+function buildMapTree() {
+  const subjMap = new Map();
+  mapSessions().forEach(s => {
+    const subIdx = state.subjects.findIndex(x=>x.id===s.subjectId);
+    const sub = state.subjects[subIdx];
+    if (!subjMap.has(s.subjectId)) {
+      subjMap.set(s.subjectId, { name: sub?sub.name:s.subjectName, color: getColor(subIdx>=0?subIdx:subjMap.size), books: new Map() });
+    }
+    const sn = subjMap.get(s.subjectId), bKey = s.bookId || '__subject_only__';
+    if (!sn.books.has(bKey)) {
+      const book = sub && s.bookId ? sub.books.find(b=>b.id===s.bookId) : null;
+      sn.books.set(bKey, { name: book?book.name:s.bookName, isClass: s.isClass, sessions: [] });
+    }
+    sn.books.get(bKey).sessions.push(s);
+  });
+  return {
+    name: '全体',
+    children: [...subjMap.values()].map(sn => ({
+      name: sn.name, color: sn.color,
+      children: [...sn.books.values()].map(b => ({
+        name: b.name, isClass: b.isClass, color: sn.color,
+        children: b.sessions.map(s => ({ name: s.date.slice(5).replace('-','/'), session: s, color: sn.color, value: s.duration }))
+      }))
+    }))
+  };
+}
+
+// 円パッキング（d3-hierarchy の packSiblings と同じ front-chain 方式の簡易版）
+function packPlace(b, a, c) {
+  const dx = b.x-a.x, dy = b.y-a.y, d2 = dx*dx+dy*dy;
+  if (d2) {
+    let a2 = (a.r+c.r)**2, b2 = (b.r+c.r)**2;
+    if (a2 > b2) { const x=(d2+b2-a2)/(2*d2), y=Math.sqrt(Math.max(0,b2/d2-x*x)); c.x=b.x-x*dx-y*dy; c.y=b.y-x*dy+y*dx; }
+    else { const x=(d2+a2-b2)/(2*d2), y=Math.sqrt(Math.max(0,a2/d2-x*x)); c.x=a.x+x*dx-y*dy; c.y=a.y+x*dy+y*dx; }
+  } else { c.x = a.x+c.r; c.y = a.y; }
+}
+function packIntersects(a, b) { const dr=a.r+b.r-1e-6, dx=b.x-a.x, dy=b.y-a.y; return dr>0 && dr*dr > dx*dx+dy*dy; }
+function packScore(n) { const a=n._, b=n.next._, ab=a.r+b.r, dx=(a.x*b.r+b.x*a.r)/ab, dy=(a.y*b.r+b.y*a.r)/ab; return dx*dx+dy*dy; }
+function packEnclose(circles) {
+  // 近似の最小包含円（Bădoiu–Clarkson 法）
+  let cx = circles.reduce((s,c)=>s+c.x,0)/circles.length, cy = circles.reduce((s,c)=>s+c.y,0)/circles.length;
+  const far = () => { let best=null, bd=-1; circles.forEach(c=>{ const d=Math.hypot(c.x-cx,c.y-cy)+c.r; if(d>bd){bd=d;best=c;} }); return [best,bd]; };
+  for (let i=1; i<=300; i++) {
+    const [c] = far(), d = Math.hypot(c.x-cx,c.y-cy) || 1;
+    const px = c.x+(c.x-cx)/d*c.r, py = c.y+(c.y-cy)/d*c.r;
+    cx += (px-cx)/(i+1); cy += (py-cy)/(i+1);
+  }
+  return { x: cx, y: cy, r: far()[1] };
+}
+function packSiblings(circles) {
+  const n = circles.length; if (!n) return 0;
+  let a = circles[0], b, c; a.x = 0; a.y = 0;
+  if (n < 2) return a.r;
+  b = circles[1]; a.x = -b.r; b.x = a.r; b.y = 0;
+  if (n < 3) return a.r + b.r;
+  packPlace(b, a, c = circles[2]);
+  a = {_:a}; b = {_:b}; c = {_:c};
+  a.next = c.previous = b; b.next = a.previous = c; c.next = b.previous = a;
+  pack: for (let i=3; i<n; ++i) {
+    packPlace(a._, b._, circles[i]); c = {_:circles[i]};
+    let j = b.next, k = a.previous, sj = b._.r, sk = a._.r;
+    do {
+      if (sj <= sk) {
+        if (packIntersects(j._, c._)) { b = j; a.next = b; b.previous = a; --i; continue pack; }
+        sj += j._.r; j = j.next;
+      } else {
+        if (packIntersects(k._, c._)) { a = k; a.next = b; b.previous = a; --i; continue pack; }
+        sk += k._.r; k = k.previous;
+      }
+    } while (j !== k.next);
+    c.previous = a; c.next = b; a.next = b.previous = b = c;
+    let aa = packScore(a);
+    while ((c = c.next) !== b) { const ca = packScore(c); if (ca < aa) { a = c; aa = ca; } }
+    b = a.next;
+  }
+  const e = packEnclose(circles);
+  circles.forEach(ci => { ci.x -= e.x; ci.y -= e.y; });
+  return e.r;
+}
+// data({name, children|value}) → 位置付きノードの木。size は外周円の直径
+function packTree(data, size, padFn) {
+  const build = (d, parent) => {
+    const n = { data: d, parent, depth: parent ? parent.depth+1 : 0 };
+    if (d.children && d.children.length) {
+      n.children = d.children.map(c => build(c, n)).sort((a,b)=>b.value-a.value);
+      n.value = n.children.reduce((s,c)=>s+c.value,0);
+    } else n.value = d.value || 0;
+    return n;
+  };
+  const root = build(data, null);
+  const all = []; (function walk(n){ all.push(n); (n.children||[]).forEach(walk); })(root);
+  const layout = k => {
+    // 子→親の順に半径を決める。padding は最終スケールでの値を k で割って揃える
+    for (let i=all.length-1; i>=0; i--) {
+      const n = all[i];
+      if (!n.children) { n.r = Math.sqrt(n.value); continue; }
+      const p = padFn(n) / k;
+      n.children.forEach(c => c.r += p);
+      const r = packSiblings(n.children);
+      n.children.forEach(c => c.r -= p);
+      n.r = r + p;
+    }
+  };
+  layout(1); layout(size/2/root.r);
+  const k = size/2/root.r;
+  root.x = size/2; root.y = size/2; root.r *= k;
+  all.slice(1).forEach(n => { n.x = n.parent.x + n.x*k; n.y = n.parent.y + n.y*k; n.r *= k; });
+  all.forEach(n => {
+    n.ancestors = () => { const r=[]; for (let m=n; m; m=m.parent) r.push(m); return r; };
+    n.leaves = () => all.filter(m => !m.children && m.ancestors().includes(n));
+  });
+  root.each = fn => all.forEach(fn);
+  return root;
+}
+
+function mapSize() { return { w: mapStage.clientWidth, h: mapStage.clientHeight }; }
+
+function renderMapTab() {
+  const data = buildMapTree();
+  const prevPath = mapFocus ? mapFocus.ancestors().map(n=>n.data.name).reverse() : [];
+  mapSvg.innerHTML = '';
+  if (!data.children.length) {
+    mapRoot = mapFocus = null;
+    document.getElementById('map-crumbs').innerHTML = '';
+    document.getElementById('map-detail').innerHTML = '<div class="no-data-msg">この期間の記録がありません</div>';
+    return;
+  }
+  const S = 1000;
+  mapRoot = packTree(data, S, n => n.depth===0 ? 14 : n.depth===1 ? 8 : 3);
+
+  mapRoot.each(n => {
+    const c = document.createElementNS(SVG_NS,'circle');
+    const col = n.data.color;
+    if (n.depth===0) { c.setAttribute('fill','white'); c.setAttribute('stroke','var(--border2)'); }
+    else if (n.depth===1) { c.setAttribute('fill',col); c.setAttribute('fill-opacity','0.10'); c.setAttribute('stroke',col); }
+    else if (n.depth===2) { c.setAttribute('fill',col); c.setAttribute('fill-opacity','0.18'); c.setAttribute('stroke',col); c.setAttribute('stroke-opacity','0.6');
+      if (n.data.isClass) c.setAttribute('stroke-dasharray','4 3'); }
+    else { c.setAttribute('fill',col); c.setAttribute('fill-opacity','0.75'); c.setAttribute('stroke','white'); }
+    c.setAttribute('stroke-width', n.depth===0 ? 1 : 1.2);
+    c.addEventListener('click', e => { e.stopPropagation(); mapZoomTo(n.children ? (n===mapFocus ? (n.parent||n) : n) : n.parent); });
+    c.addEventListener('mousemove', e => mapShowTip(e, n));
+    c.addEventListener('mouseleave', () => mapTip.classList.remove('show'));
+    n.circleEl = c; mapSvg.appendChild(c);
+  });
+  mapRoot.each(n => {
+    if (!n.depth) return;
+    const t = document.createElementNS(SVG_NS,'text');
+    t.setAttribute('class','map-label' + (n.depth===3?' on-dark':''));
+    const a = document.createElementNS(SVG_NS,'tspan'), b = document.createElementNS(SVG_NS,'tspan');
+    a.textContent = n.data.name; b.textContent = fmtHM(n.value); b.setAttribute('class','map-label-time');
+    t.append(a,b); n.labelEl = t; n.labelName = a; n.labelTime = b; mapSvg.appendChild(t);
+  });
+
+  // 再描画前と同じ階層にフォーカスを戻す
+  let f = mapRoot;
+  for (const name of prevPath.slice(1)) { const c = (f.children||[]).find(x=>x.data.name===name); if (!c || !c.children) break; f = c; }
+  mapFocus = f; mapView = [f.x, f.y, f.r*2];
+  mapApplyView(mapView);
+  renderMapSide();
+}
+
+function mapApplyView(v) {
+  const { w, h } = mapSize(), k = (Math.min(w,h) - 24) / v[2];
+  mapRoot.each(n => {
+    const x = (n.x - v[0])*k + w/2, y = (n.y - v[1])*k + h/2, r = n.r*k;
+    n.circleEl.setAttribute('cx',x); n.circleEl.setAttribute('cy',y); n.circleEl.setAttribute('r',Math.max(r,0));
+    if (!n.labelEl) return;
+    // フォーカスの子（名前＋時間）と孫（名前のみ）にラベルを表示
+    const lv1 = n.parent===mapFocus, lv2 = !lv1 && n.parent && n.parent.parent===mapFocus;
+    const show = (lv1 && r > 18) || (lv2 && r > 22);
+    n.labelEl.style.display = show ? '' : 'none';
+    if (!show) return;
+    const fs = lv1 ? Math.max(9, Math.min(15, r/4.2)) : Math.max(8, Math.min(11, r/3.6));
+    const maxChars = Math.max(2, Math.floor(r*1.7/fs));
+    n.labelName.textContent = n.data.name.length>maxChars ? n.data.name.slice(0,maxChars-1)+'…' : n.data.name;
+    n.labelEl.setAttribute('font-size', fs);
+    const withTime = lv1 && r > 34;
+    // 中に孫ラベルがある円は、名前を円の上端に寄せて重なりを避ける
+    const top = lv1 && n.children && n.children.some(c => c.r*k > 22);
+    const yName = top ? y - r + fs*1.5 : y - (withTime ? fs*0.15 : -fs*0.35);
+    n.labelName.setAttribute('x',x); n.labelName.setAttribute('y', yName);
+    n.labelTime.setAttribute('x',x); n.labelTime.setAttribute('y', yName + fs*1.2);
+    n.labelTime.style.display = withTime ? '' : 'none';
+    n.labelTime.setAttribute('font-size', fs*0.85);
+    n.labelName.setAttribute('font-weight', n.depth===1 ? 700 : 500);
+  });
+}
+
+function mapZoomTo(node) {
+  if (!node || node===mapFocus) return;
+  mapFocus = node;
+  const from = mapView.slice(), to = [node.x, node.y, node.r*2], t0 = performance.now(), dur = 600;
+  cancelAnimationFrame(mapAnim);
+  const ease = t => t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+  const step = now => {
+    const p = ease(Math.min(1,(now-t0)/dur));
+    mapView = from.map((v,i)=>v+(to[i]-v)*p);
+    mapApplyView(mapView);
+    if (p<1) mapAnim = requestAnimationFrame(step);
+  };
+  mapAnim = requestAnimationFrame(step);
+  renderMapSide();
+}
+
+function mapShowTip(e, n) {
+  const rect = mapStage.getBoundingClientRect(), s = n.data.session;
+  const pct = mapRoot.value ? Math.round(n.value/mapRoot.value*100) : 0;
+  mapTip.innerHTML = s
+    ? `${escHtml(s.date)} ${escHtml(s.savedAt ? new Date(s.savedAt).toTimeString().slice(0,5) : '')}<br><b>${fmtSecShort(s.duration)}</b>`
+    : `${MAP_KIND[n.depth]}：${escHtml(n.data.name)}<br><b>${fmtSecShort(n.value)}</b>　全体の${pct}%`;
+  let x = e.clientX - rect.left + 14, y = e.clientY - rect.top + 14;
+  mapTip.classList.add('show');
+  if (x + mapTip.offsetWidth > rect.width) x -= mapTip.offsetWidth + 28;
+  if (y + mapTip.offsetHeight > rect.height) y -= mapTip.offsetHeight + 28;
+  mapTip.style.left = x+'px'; mapTip.style.top = y+'px';
+}
+
+function renderMapSide() {
+  const f = mapFocus, crumbs = document.getElementById('map-crumbs');
+  crumbs.innerHTML = '';
+  f.ancestors().reverse().forEach((n,i,arr) => {
+    if (i) crumbs.insertAdjacentHTML('beforeend','<span>›</span>');
+    const b = document.createElement('button');
+    b.className = 'map-crumb' + (n===f ? ' current' : ''); b.textContent = n.data.name;
+    if (n!==f) b.addEventListener('click', () => mapZoomTo(n));
+    crumbs.appendChild(b);
+  });
+
+  const det = document.getElementById('map-detail');
+  const sessCount = f.leaves().length;
+  const pct = mapRoot.value ? Math.round(f.value/mapRoot.value*100) : 0;
+  det.innerHTML = `
+    <div>
+      <div class="map-detail-kind">${MAP_KIND[f.depth]}${f.data.isClass?'（授業）':''}</div>
+      <div class="map-detail-name">${f.depth?`<span class="map-detail-dot" style="background:${f.data.color}"></span>`:''}${escHtml(f.data.name)}</div>
+    </div>
+    <div>
+      <div class="map-detail-total">${fmtSecShort(f.value)}</div>
+      <div class="map-detail-sub">${sessCount}セッション${f.depth?` ・ 全体の${pct}%`:''}</div>
+    </div>
+    <div class="section-title">${f.depth===2 ? 'セッション' : f.depth===1 ? '教科書 / 授業' : '科目'}（${f.children.length}）</div>
+    <div style="display:flex;flex-direction:column;gap:6px;" id="map-children"></div>`;
+  const list = det.querySelector('#map-children');
+  f.children.forEach(c => {
+    const el = document.createElement('div'), s = c.data.session;
+    el.className = 'map-child' + (c.children ? '' : ' leaf');
+    const label = s ? `${s.date}${s.savedAt ? ' '+new Date(s.savedAt).toTimeString().slice(0,5) : ''}` : c.data.name;
+    const sub = c.children ? `<span style="font-size:10px;color:var(--text3);">${c.leaves().length}回</span>` : '';
+    el.innerHTML = `
+      <div class="map-child-row">
+        <span class="map-detail-dot" style="background:${c.data.color};width:8px;height:8px;"></span>
+        <span class="map-child-name">${escHtml(label)}${c.data.isClass?' <span class="log-row-class-badge">授業</span>':''}</span>
+        ${sub}<span class="map-child-time">${fmtSecShort(c.value)}</span>
+      </div>
+      <div class="map-child-bar-wrap"><div class="map-child-bar" style="width:${f.value?c.value/f.value*100:0}%;background:${c.data.color};"></div></div>`;
+    if (c.children) el.addEventListener('click', () => mapZoomTo(c));
+    el.addEventListener('mouseenter', () => c.circleEl.setAttribute('stroke-width', 3));
+    el.addEventListener('mouseleave', () => c.circleEl.setAttribute('stroke-width', 1.2));
+    list.appendChild(el);
+  });
+}
+
+mapSvg.addEventListener('click', () => { if (mapFocus && mapFocus.parent) mapZoomTo(mapFocus.parent); });
+new ResizeObserver(() => { if (mapRoot && mapView) mapApplyView(mapView); }).observe(mapStage);
+
+[['map-period-toggle', v=>mapPeriod=v], ['map-class-toggle', v=>mapClassFilter=v]].forEach(([id,set]) => {
+  document.querySelectorAll(`#${id} .toggle-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`#${id} .toggle-btn`).forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); set(btn.dataset.val); renderMapTab();
+    });
+  });
+});
 
 // ══════════════════════════════════════════
 // INIT
