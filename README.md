@@ -7,14 +7,11 @@
 
 ### ショートカット & スタートアップ登録
 
-リポジトリをPCにダウンロード（Code → Download ZIP → 展開）してから:
-
-- **Windows**: `shortcut/install-windows.bat` をダブルクリック
-  → デスクトップにショートカットができ、Windows にサインインしたとき自動で開きます。
-  やめるときは `shortcut/uninstall-windows.bat`。
-- **Mac**: `shortcut/install-mac.command` をダブルクリック（初回は右クリック → 開く）
-  → デスクトップに `Pomodoro.command` ができ、ログイン時に自動で開きます。
-  やめるときはターミナルで `shortcut/install-mac.command --uninstall`。
+- **Windows**: `shortcut/Pomodoro-setup.bat` を1つダウンロードしてダブルクリックするだけ。
+  タイマーは `%LOCALAPPDATA%\Pomodoro` に置かれ、デスクトップにショートカットができ、
+  Windows にサインインしたとき自動で開きます。やめるときは `shortcut/Pomodoro-uninstall.bat`。
+  （`pomodoro.html` を直したら `python3 shortcut/build_windows_setup.py` で作り直す）
+- **Mac**: リポジトリをダウンロードして `shortcut/install-mac.command` をダブルクリック
+  （初回は右クリック → 開く）。やめるときは `install-mac.command --uninstall`。
 
 Edge か Chrome があれば、アドレスバーなしの小さなウィンドウで開きます。
-フォルダを移動したら、もう一度 install を実行してください。
