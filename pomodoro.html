@@ -16,8 +16,7 @@
     --text3: #8a8078;
     --border: #d8d3ca;
     --work: #c8723a;
-    --short: #2d5a3d;
-    --long: #2e3b62;
+    --break: #2d5a3d;
     --mode: var(--work);
     --mono: ui-monospace, 'SF Mono', 'DM Mono', Menlo, Consolas, monospace;
     --sans: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
@@ -32,12 +31,10 @@
       --text3: #857e74;
       --border: #363c47;
       --work: #e08a52;
-      --short: #5fae7d;
-      --long: #8197d6;
+      --break: #5fae7d;
     }
   }
-  body[data-mode="short"] { --mode: var(--short); }
-  body[data-mode="long"]  { --mode: var(--long); }
+  body[data-mode="break"] { --mode: var(--break); }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -67,10 +64,6 @@
   .mode-label { font-size: 12px; color: var(--mode); font-weight: 700; letter-spacing: .08em; }
   body.paused .clock { opacity: .55; }
 
-  /* round dots */
-  .dots { display: flex; gap: 8px; align-items: center; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--work); }
-  .dot.done { background: var(--work); }
   .today { font-size: 12px; color: var(--text3); font-family: var(--mono); }
   .today strong { color: var(--text); font-weight: 500; }
 
@@ -102,7 +95,7 @@
 
   /* very small / short windows: hide extras, go horizontal */
   @media (max-height: 520px) {
-    .bottom, .today { display: none; }
+    .bottom { display: none; }
     .main-btn { height: 46px; }
     .sub-btn { width: 40px; height: 40px; }
   }
@@ -110,13 +103,14 @@
     .wrap { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr 1fr; gap: 8px 20px; max-width: 640px; align-items: center; }
     .modes { grid-column: 1 / -1; }
     .ring-box { grid-row: 2 / 4; width: min(60vh, 42vw); }
-    .dots { align-self: end; justify-content: center; }
+    .today { display: block; align-self: end; text-align: center; }
     .controls { align-self: start; }
   }
   @media (max-height: 300px) {
-    .modes, .dots { display: none; }
+    .modes, .today { display: none; }
     .wrap { grid-template-rows: 1fr auto; }
     .ring-box { grid-row: 1 / 3; width: min(78vh, 42vw); }
+    .controls { grid-row: 1 / 3; align-self: center; }
   }
   @media (max-width: 300px) {
     .controls { gap: 10px; }
@@ -126,10 +120,9 @@
 </head>
 <body data-mode="work">
 <main class="wrap">
-  <div class="modes" role="group" aria-label="モード">
-    <button class="mode-btn" data-mode="work" aria-pressed="true">集中</button>
-    <button class="mode-btn" data-mode="short" aria-pressed="false">小休憩</button>
-    <button class="mode-btn" data-mode="long" aria-pressed="false">長休憩</button>
+  <div class="modes" role="group" aria-label="時間の形式">
+    <button class="mode-btn" data-preset="25" aria-pressed="true">25分 / 5分</button>
+    <button class="mode-btn" data-preset="50" aria-pressed="false">50分 / 10分</button>
   </div>
 
   <div class="ring-box">
@@ -143,8 +136,7 @@
     </div>
   </div>
 
-  <div class="dots" id="dots" aria-label="ラウンド"></div>
-  <div class="today">今日 <strong id="today-count">0</strong> ポモドーロ · <strong id="today-min">0</strong> 分</div>
+  <div class="today">今日 <strong id="today-count">0</strong> 回 · <strong id="today-min">0</strong> 分</div>
 
   <div class="controls">
     <button class="sub-btn" id="btn-reset" aria-label="リセット" title="リセット">
@@ -165,10 +157,6 @@
 <dialog id="settings">
   <form method="dialog" id="settings-form">
     <h2>設定</h2>
-    <label class="row">集中<span><input type="number" name="work" min="1" max="180" required><span class="unit">分</span></span></label>
-    <label class="row">小休憩<span><input type="number" name="short" min="1" max="60" required><span class="unit">分</span></span></label>
-    <label class="row">長休憩<span><input type="number" name="long" min="1" max="120" required><span class="unit">分</span></span></label>
-    <label class="row">長休憩までの回数<span><input type="number" name="rounds" min="1" max="12" required><span class="unit">回</span></span></label>
     <label class="row">次を自動スタート<input type="checkbox" name="auto"></label>
     <label class="row">音を鳴らす<input type="checkbox" name="sound"></label>
     <label class="row">通知を出す<input type="checkbox" name="notify"></label>
@@ -181,8 +169,9 @@
 
 <script>
 const KEY = 'pomodoro_v1';
-const LABEL = { work: '集中', short: '小休憩', long: '長休憩' };
-const DEFAULTS = { work: 25, short: 5, long: 15, rounds: 4, auto: false, sound: true, notify: false };
+const LABEL = { work: '集中', break: '休憩' };
+const PRESETS = { '25': { work: 25, break: 5 }, '50': { work: 50, break: 10 } };
+const DEFAULTS = { preset: '25', auto: false, sound: true, notify: false };
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -194,18 +183,18 @@ function load() {
 }
 const saved = load();
 const settings = { ...DEFAULTS, ...saved.settings };
+if (!PRESETS[settings.preset]) settings.preset = DEFAULTS.preset;
 // timer state: endAt (ms) while running, remaining (ms) while paused/idle
-let st = {
-  mode: 'work', round: 0, running: false, endAt: 0, remaining: settings.work * 60000,
-  ...saved.st,
-};
+let st = { mode: 'work', running: false, endAt: 0, remaining: PRESETS[settings.preset].work * 60000, ...saved.st };
+if (!LABEL[st.mode]) { st = { mode: 'work', running: false, endAt: 0, remaining: PRESETS[settings.preset].work * 60000 }; }
 let log = saved.log && saved.log.date === todayStr() ? saved.log : { date: todayStr(), count: 0, min: 0 };
 
 function persist() {
   try { localStorage.setItem(KEY, JSON.stringify({ settings, st, log })); } catch (e) {}
 }
 
-const durationOf = mode => settings[mode] * 60000;
+const minutesOf = mode => PRESETS[settings.preset][mode];
+const durationOf = mode => minutesOf(mode) * 60000;
 const remainingNow = () => st.running ? Math.max(0, st.endAt - Date.now()) : st.remaining;
 
 // ── render ──
@@ -225,15 +214,9 @@ function render() {
 function renderStatic() {
   document.body.dataset.mode = st.mode;
   document.body.classList.toggle('paused', !st.running && st.remaining < durationOf(st.mode));
-  document.querySelectorAll('.mode-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === st.mode));
+  document.querySelectorAll('.mode-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === settings.preset));
   $('mode-label').textContent = LABEL[st.mode];
   $('btn-main').textContent = st.running ? '一時停止' : (st.remaining < durationOf(st.mode) ? '再開' : 'スタート');
-  const dots = $('dots'); dots.innerHTML = '';
-  for (let i = 0; i < settings.rounds; i++) {
-    const d = document.createElement('span');
-    d.className = 'dot' + (i < st.round ? ' done' : '');
-    dots.appendChild(d);
-  }
   if (log.date !== todayStr()) log = { date: todayStr(), count: 0, min: 0 };
   $('today-count').textContent = log.count;
   $('today-min').textContent = log.min;
@@ -264,31 +247,22 @@ function setMode(mode, autoStart = false) {
   st.mode = mode; st.running = false; st.remaining = durationOf(mode);
   if (autoStart) start(); else { releaseWakeLock(); persist(); renderStatic(); }
 }
-function nextMode() {
-  if (st.mode === 'work') return st.round >= settings.rounds ? 'long' : 'short';
-  return 'work';
-}
+const nextMode = () => st.mode === 'work' ? 'break' : 'work';
 function complete() {
   if (st.mode === 'work') {
-    st.round++;
     if (log.date !== todayStr()) log = { date: todayStr(), count: 0, min: 0 };
-    log.count++; log.min += settings.work;
-  } else if (st.mode === 'long') {
-    st.round = 0;
+    log.count++; log.min += minutesOf('work');
   }
   const next = nextMode();
   alertDone(st.mode, next);
   setMode(next, settings.auto);
 }
-function skip() {
-  // skipping a focus block doesn't count it; skipping a long break still resets the cycle
-  if (st.mode === 'long') st.round = 0;
-  const next = st.mode === 'work' ? nextMode() : 'work';
-  setMode(next, st.running && settings.auto);
-}
-function reset() {
-  if (!st.running && st.remaining === durationOf(st.mode)) { st.round = 0; } // 2回目のリセットでラウンドも戻す
-  setMode(st.mode);
+// skipping a focus block doesn't count it
+function skip() { setMode(nextMode(), st.running && settings.auto); }
+function reset() { setMode(st.mode); }
+function setPreset(preset) {
+  settings.preset = preset;
+  setMode('work');
 }
 function onTick() {
   if (remainingNow() <= 0) complete(); else render();
@@ -298,9 +272,9 @@ $('btn-main').addEventListener('click', () => st.running ? pause() : start());
 $('btn-skip').addEventListener('click', skip);
 $('btn-reset').addEventListener('click', reset);
 document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => {
-  if (b.dataset.mode === st.mode) return;
+  if (b.dataset.preset === settings.preset) return;
   if (st.running && !confirm('タイマーを止めて切り替えますか？')) return;
-  setMode(b.dataset.mode);
+  setPreset(b.dataset.preset);
 }));
 document.addEventListener('keydown', e => {
   if (e.target.closest('dialog')) return;
@@ -338,7 +312,7 @@ function alertDone(done, next) {
   beep();
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   if (settings.notify && 'Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(`${LABEL[done]} 終了`, { body: `次は${LABEL[next]}（${settings[next]}分）`, tag: 'pomodoro' }); } catch (e) {}
+    try { new Notification(`${LABEL[done]} 終了`, { body: `次は${LABEL[next]}（${minutesOf(next)}分）`, tag: 'pomodoro' }); } catch (e) {}
   }
 }
 
@@ -351,21 +325,41 @@ function releaseWakeLock() { try { wakeLock && wakeLock.release(); } catch (e) {
 // ── settings ──
 const dlg = $('settings'), form = $('settings-form');
 $('btn-settings').addEventListener('click', () => {
-  for (const k of ['work', 'short', 'long', 'rounds']) form.elements[k].value = settings[k];
   for (const k of ['auto', 'sound', 'notify']) form.elements[k].checked = settings[k];
   dlg.showModal();
 });
 $('btn-cancel').addEventListener('click', () => dlg.close());
 form.addEventListener('submit', async () => {
-  for (const k of ['work', 'short', 'long', 'rounds']) settings[k] = Math.max(1, parseInt(form.elements[k].value, 10) || DEFAULTS[k]);
   for (const k of ['auto', 'sound', 'notify']) settings[k] = form.elements[k].checked;
-  if (st.round > settings.rounds) st.round = settings.rounds;
   if (settings.notify && 'Notification' in window && Notification.permission === 'default') {
     try { await Notification.requestPermission(); } catch (e) {}
   }
-  if (!st.running) st.remaining = durationOf(st.mode);
   persist(); renderStatic();
 });
+
+// ── window position/size: remember where the app window was and put it back ──
+// Only in the desktop shortcut's app window (opened with ?app); a normal tab can't be moved.
+const WIN_KEY = 'pomodoro_window';
+const isAppWindow = new URLSearchParams(location.search).has('app') || !window.locationbar.visible;
+const winBounds = () => ({ x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight });
+function restoreWindow() {
+  let b; try { b = JSON.parse(localStorage.getItem(WIN_KEY)); } catch (e) {}
+  if (!b || b.w < 150 || b.h < 150) return;
+  try { window.resizeTo(b.w, b.h); window.moveTo(b.x, b.y); } catch (e) {}
+}
+let lastWin = '';
+function saveWindow() {
+  const s = JSON.stringify(winBounds());
+  if (s === lastWin) return;
+  lastWin = s;
+  try { localStorage.setItem(WIN_KEY, s); } catch (e) {}
+}
+if (isAppWindow) {
+  restoreWindow();
+  // moving a window fires no event, so check once a second (after the restore has settled)
+  setTimeout(() => { lastWin = JSON.stringify(winBounds()); setInterval(saveWindow, 1000); }, 1500);
+  window.addEventListener('pagehide', saveWindow);
+}
 
 // ── boot: resume a running timer after reload ──
 if (st.running) {

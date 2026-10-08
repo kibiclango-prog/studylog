@@ -26,7 +26,7 @@ try {
     $html = Join-Path $dir 'pomodoro.html'
     $b64 = ($l[($j+1)..($l.Length-1)] -join '')
     [IO.File]::WriteAllBytes($html, [Convert]::FromBase64String($b64))
-    $url = ([System.Uri]$html).AbsoluteUri
+    $url = ([System.Uri]$html).AbsoluteUri + "?app"
 
     $browser = @(
         "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",

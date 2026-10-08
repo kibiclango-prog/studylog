@@ -14,4 +14,5 @@
 - **Mac**: リポジトリをダウンロードして `shortcut/install-mac.command` をダブルクリック
   （初回は右クリック → 開く）。やめるときは `install-mac.command --uninstall`。
 
-Edge か Chrome があれば、アドレスバーなしの小さなウィンドウで開きます。
+Edge か Chrome があれば、アドレスバーなしの小さなウィンドウで開き、
+前回閉じたときの位置と大きさで表示されます。

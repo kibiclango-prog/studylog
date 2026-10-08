@@ -16,6 +16,7 @@ fi
 
 [ -f "$HTML" ] || { echo "pomodoro.html not found: $HTML"; exit 1; }
 URL="file://$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$HTML")"
+URL="$URL?app"
 
 # Small app-style window in Chrome/Edge if installed, else the default browser
 OPEN_CMD="open \"$HTML\""
